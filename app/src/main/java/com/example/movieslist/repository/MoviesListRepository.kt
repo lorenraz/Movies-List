@@ -1,6 +1,8 @@
 package com.example.movieslist.repository
 
 import android.content.Context
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.room.Room
 import com.example.movieslist.database.MovieDatabase
 import com.example.movieslist.database.MovieEntity
@@ -9,54 +11,54 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MoviesListRepository {
 
     private var items: ArrayList<String>? = null
     private var movieDatabase: MovieDatabase? = null
 
-//    private val URL = "https://movieslist-a9fc4-default-rtdb.firebaseio.com/name"
     private lateinit var database: FirebaseDatabase
     private lateinit var namesRef: DatabaseReference
 
-//    val items = MutableLiveData<List<String>>()
-
-    companion object {
-        private var instance: MoviesListRepository? = null
-
-        // Static function to get the instance of UserRepository
-        fun getInstance(): MoviesListRepository {
-            if (instance == null) {
-                instance = MoviesListRepository()
-            }
-            return instance!!
-        }
+    private fun arrayListToLiveData(arrayList: ArrayList<String>): LiveData<ArrayList<String>> {
+        val data = MutableLiveData<ArrayList<String>>()
+        val array = arrayListOf<String>()
+        array.addAll(arrayList)
+        data.postValue(array)
+        return data
     }
 
-    fun getItems(context: Context): ArrayList<String> {
-        println("loren repository getItems")
-        return arrayListOf("alice", "bob")
-        if (items != null) return items!!
+    fun getItems(context: Context): LiveData<ArrayList<String>> {
+        if (items != null) return arrayListToLiveData(items!!)
+
         if (isItemsExistOnPref(context)) return getItemsFromPref(context)
-        initDb(context)
-        if (isItemsExistOnDb()) {
-            val names: ArrayList<String> = getItemsFromDb()
-            saveItemsToSharedPref(context, names)
-            items = names
-            return names
-        }
 
-        //TODO change return value
+//        val data = MutableLiveData<ArrayList<String>>()
+//        initDb(context)
+//        isItemsExistOnDb { exists ->
+//            if (exists) {
+//                getItemsFromDb { names ->
+//                    saveItemsToSharedPref(context, names)
+//                    items = names
+//                    data.postValue(names)
+//                }
+//            } else {
+//                data.postValue(getAllNames(context).value)
+//            }
+//        }
+//
+//        return data
 
-        getNames()
-        //saveItemsToDb()
-//        return items!!
+        val namesListFromApi = getAllNames(context)
+        return namesListFromApi
 
-        println("loren repo getItems return")
-        return arrayListOf("alice", "bob")
     }
 
-    //CACHE
+    //Shared Preferences
     private fun saveItemsToSharedPref(context: Context, items: ArrayList<String>) {
         val sharedPref = context.getSharedPreferences("moviesPref", Context.MODE_PRIVATE)
         val editor = sharedPref.edit()
@@ -74,13 +76,17 @@ class MoviesListRepository {
         return sharedPref.contains("names")
     }
 
-    private fun getItemsFromPref(context: Context): ArrayList<String> {
+    private fun getItemsFromPref(context: Context): LiveData<ArrayList<String>> {
         val sharedPreferences = context.getSharedPreferences("moviesPref", Context.MODE_PRIVATE)
-        val arrayListString = sharedPreferences.getString("names", "") ?: ""
-        val arrayList = arrayListString.split(",").toMutableList()
-        return ArrayList(arrayList.filter { it.isNotBlank() })
-    }
+        val namesString = sharedPreferences.getString("names", "") ?: ""
+        val namesList = namesString.split(",").toMutableList()
 
+        val data = MutableLiveData<ArrayList<String>>()
+        val array = arrayListOf<String>()
+        array.addAll(namesList)
+        data.postValue(array)
+        return data
+    }
 
     //DB
     private fun initDb(context: Context) {
@@ -91,47 +97,39 @@ class MoviesListRepository {
         ).build()
     }
 
-    private suspend fun saveItemsToDb(items: ArrayList<String>) {
-        //convert
-        val movieEntities = items.map { MovieEntity(movieName = it) }
-
-        movieDatabase!!.movieDao().insertNames(movieEntities)
-    }
-
-    private fun isItemsExistOnDb(): Boolean {
-//        return movieDatabase!!.movieDao().getCount() > 0
-        val entityItems = movieDatabase!!.movieDao().getAll()
-        return entityItems.isNotEmpty()
-    }
-
-    private fun getItemsFromDb(): ArrayList<String> {
-        val entityItems = movieDatabase!!.movieDao().getAll()
-        val stringItems = ArrayList(entityItems.map { it.movieName!! })
-        return stringItems
-    }
-
-    //api
-    private fun initFirebase() {
-        database = FirebaseDatabase.getInstance()
-        namesRef = database.getReference("name")
-
-        namesRef.get().addOnSuccessListener { snapshot ->
-            val namesList = mutableListOf<String>()
-            snapshot.children.forEach { child ->
-                val name = child.getValue(String::class.java)
-                name?.let {
-                    namesList.add(it)
-                }
-            }
-            println("loren names list: $namesList")
-        }.addOnFailureListener { exception ->
-            println("loren Failed to retrieve names: ${exception.message}")
+    private fun saveItemsToDb(items: ArrayList<String>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val movieEntities = items.map { MovieEntity(movieName = it) }
+            movieDatabase!!.movieDao().insertNames(movieEntities)
         }
     }
 
-    private fun getNames() {
+    private fun isItemsExistOnDb(callback: (Boolean) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val entityItems = movieDatabase!!.movieDao().getAll()
+            val result = entityItems.isNotEmpty()
+            withContext(Dispatchers.Main) {
+                callback(result)
+            }
+        }
+    }
+
+    private fun getItemsFromDb(callback: (ArrayList<String>) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val entityItems = movieDatabase!!.movieDao().getAll()
+            val stringItems = ArrayList(entityItems.map { it.movieName!! })
+            withContext(Dispatchers.Main) {
+                callback(stringItems)
+            }
+        }
+    }
+
+    //api
+    private fun getAllNames(context: Context): LiveData<ArrayList<String>> {
         database = FirebaseDatabase.getInstance()
         namesRef = database.getReference("name")
+
+        val data = MutableLiveData<ArrayList<String>>()
 
         namesRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -140,16 +138,26 @@ class MoviesListRepository {
                     val name = nameSnapshot.getValue(String::class.java)
                     name?.let { namesList.add(it) }
                 }
-                // Handle the list of names here
-                println("loren firebase api. Names: $namesList")
+                val array = arrayListOf<String>()
+                array.addAll(namesList)
+                data.postValue(array)
+
+                items = array
+
+                //save to pref
+                saveItemsToSharedPref(context, array)
+
+                //save to db
+//                    CoroutineScope(Dispatchers.IO).launch {
+//                        saveItemsToDb(array)
+//                    }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 // Handle possible errors
-                println("loren firebase api. Failed to read names: ${error.message}")
+                println("Firebase error: ${error.message}")
             }
         })
+        return data
     }
-
-
 }

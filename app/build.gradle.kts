@@ -2,11 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
 
-    //add the google services Gradle plugin
-    id("com.google.gms.google-services")
-
     //room
     id ("kotlin-kapt")
+
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -68,7 +67,7 @@ dependencies {
     implementation(libs.androidx.recyclerview.selection)
 
     //import the firebase BoM
-    implementation(libs.firebase.bom)
+    implementation(platform(libs.firebase.bom))
 
     //room
     implementation(libs.androidx.room.runtime)

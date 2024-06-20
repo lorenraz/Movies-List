@@ -100,8 +100,13 @@ class MoviesViewModel: ViewModel() {
     private fun saveToPref(context: Context) {
         val sharedPref = context.getSharedPreferences("moviesPref", Context.MODE_PRIVATE)
         val editor = sharedPref.edit()
-        val namesString = names.joinToString(separator = " , ")
+        val namesString = names.joinToString(separator = ",")
         editor.putString("names", namesString)
         editor.apply()
+    }
+
+    //for test
+    fun setNames(list: List<String>) {
+        names = list
     }
 }

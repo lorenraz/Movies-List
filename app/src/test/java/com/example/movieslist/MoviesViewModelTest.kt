@@ -3,8 +3,6 @@ package com.example.movieslist
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.example.movieslist.database.MovieDao
-import com.example.movieslist.database.MovieDatabase
 import com.example.movieslist.viewmodel.MoviesViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest

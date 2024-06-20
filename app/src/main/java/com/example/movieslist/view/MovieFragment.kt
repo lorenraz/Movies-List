@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 import com.example.movieslist.R
+import com.example.movieslist.utils.Constants
 
 class MovieFragment: Fragment() {
 
@@ -18,7 +19,7 @@ class MovieFragment: Fragment() {
         val view = inflater.inflate(R.layout.fragment_movie, container, false)
 
         val nameText: TextView = view.findViewById(R.id.movie_name)
-        nameText.text = arguments?.getString("name_key")
+        nameText.text = arguments?.getString(Constants.MOVIE_NAME_KEY)
 
         return view
     }

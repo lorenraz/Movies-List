@@ -12,6 +12,7 @@ import com.example.movieslist.R
 import com.example.movieslist.adapter.MoviesListAdapter
 import com.example.movieslist.database.MovieDatabase
 import com.example.movieslist.repository.MoviesRepository
+import com.example.movieslist.utils.Constants
 import com.example.movieslist.viewmodel.MoviesViewModel
 import com.example.movieslist.viewmodel.MoviesViewModelFactory
 
@@ -43,13 +44,12 @@ class MoviesListFragment : Fragment(), MoviesListAdapter.OnItemClickListener {
         recycler.layoutManager = LinearLayoutManager(requireContext())
     }
 
-
     private fun init() {
         val context = requireContext()
         val database = MovieDatabase.getDatabase(requireContext())
         val repository = MoviesRepository(database)
 
-        // Initialize the ViewModel
+        //initialize the ViewModel
         viewModel = ViewModelProvider(this,
             MoviesViewModelFactory(repository))[MoviesViewModel::class.java]
 
@@ -64,7 +64,7 @@ class MoviesListFragment : Fragment(), MoviesListAdapter.OnItemClickListener {
 
     override fun onItemClick(name: String) {
         val bundle = Bundle()
-        bundle.putString("name_key", name)
+        bundle.putString(Constants.MOVIE_NAME_KEY, name)
         val fragment = MovieFragment()
         fragment.arguments = bundle
 

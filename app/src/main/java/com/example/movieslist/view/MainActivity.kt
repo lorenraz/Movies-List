@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import androidx.room.Room
 import com.example.movieslist.R
 import com.example.movieslist.database.MovieDatabase
+import com.example.movieslist.utils.Constants
 import com.google.firebase.FirebaseApp
 
 class MainActivity : AppCompatActivity() {
@@ -26,7 +27,7 @@ class MainActivity : AppCompatActivity() {
 
         database = Room.databaseBuilder(
             this,
-            MovieDatabase::class.java, "movies_database"
+            MovieDatabase::class.java, Constants.DATABASE_NAME
         ).build()
     }
 
